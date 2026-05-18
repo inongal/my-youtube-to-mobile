@@ -822,10 +822,29 @@
             // Set Direct YouTube Link
             elements.directYtLink.href = `https://www.youtube.com/watch?v=${videoId}`;
 
-            // Load iframe with standard youtube.com, enablejsapi=1, widget_referrer and explicit referrerpolicy
-            const currentUrl = encodeURIComponent(window.location.href);
-            const currentOrigin = encodeURIComponent(window.location.origin);
-            elements.iframeContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&enablejsapi=1&origin=${currentOrigin}&widget_referrer=${currentUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+            // --- הפתרון לפי התיעוד של יוטיוב למובייל/אפליקציות מקומיות ---
+            // 1. קביעת מזהה האפליקציה או ה-Origin הנוכחי
+            let appDomain = "com.youtube.searcher.app"; // מזהה אפליקציה גנרי מדומה כברירת מחדל
+            if (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '') {
+                 // אם אנחנו רצים על דומיין אמיתי (כמו Github Pages), נשתמש בו
+                 appDomain = window.location.hostname;
+            }
+
+            // 2. יצירת URL מדויק ל-widget_referrer (חייב להתחיל ב-https://)
+            const widgetReferrerUrl = encodeURIComponent(`https://${appDomain}`);
+            
+            // 3. הגדרת ה-origin בצורה דומה
+            const originUrl = encodeURIComponent(`https://${appDomain}`);
+
+            // בניית ה-Iframe עם כל הפרמטרים המחמירים
+            elements.iframeContainer.innerHTML = `
+                <iframe 
+                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&enablejsapi=1&origin=${originUrl}&widget_referrer=${widgetReferrerUrl}" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    referrerpolicy="strict-origin-when-cross-origin" 
+                    allowfullscreen>
+                </iframe>`;
 
             // Reset state
             state.isFloating = false;
