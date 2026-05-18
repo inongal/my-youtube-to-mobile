@@ -810,8 +810,8 @@
             elements.viewsCount.textContent = 'טוען...';
             elements.channelAvatar.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="%23ccc"/></svg>';
 
-            // Load iframe with "allow=picture-in-picture" for native support triggers
-            elements.iframeContainer.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+            // Load iframe with "allow=picture-in-picture" for native support triggers and origin to avoid 150/153 errors
+            elements.iframeContainer.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&origin=${encodeURIComponent(window.location.origin)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
 
             // Reset state
             state.isFloating = false;
