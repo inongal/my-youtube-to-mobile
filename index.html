@@ -72,11 +72,11 @@
             position: fixed !important;
             bottom: 20px !important;
             right: 20px !important;
-            width: 300px !important;
+            width: 320px !important;
             height: auto !important;
-            z-index: 50 !important;
+            z-index: 999999 !important;
             border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             background: black;
             transform: translateY(0);
             transition: transform 0.3s ease;
@@ -94,14 +94,15 @@
         .floating-controls {
             display: none;
             position: absolute;
-            top: -30px;
+            top: -36px;
             right: 0;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.85);
             color: white;
-            padding: 4px 8px;
-            border-radius: 8px 8px 0 0;
+            padding: 6px 10px;
+            border-radius: 10px 10px 0 0;
             width: 100%;
             justify-content: space-between;
+            align-items: center;
         }
 
         .floating-video .floating-controls {
@@ -124,7 +125,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 transition-colors duration-200 min-h-screen flex flex-col">
+<body class="bg-gray-50 dark:bg-bgDark text-gray-900 dark:text-gray-100 transition-colors duration-200 min-h-screen flex flex-col">
 
     <!-- Header -->
     <header class="sticky top-0 z-40 bg-white dark:bg-bgDark shadow-sm border-b border-gray-200 dark:border-gray-800 transition-colors duration-200">
@@ -214,7 +215,7 @@
     </div>
 
     <!-- Main Content -->
-    <main class="flex-1 p-4 w-full max-w-4xl mx-auto">
+    <main class="flex-1 p-4 w-full max-w-4xl mx-auto flex flex-col">
         
         <!-- Loading State -->
         <div id="loading" class="hidden flex-col items-center justify-center py-20">
@@ -247,31 +248,42 @@
         </div>
 
         <!-- Results Grid -->
-        <div id="results-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 pb-20">
+        <div id="results-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 pb-8">
             <!-- Results will be injected here -->
+        </div>
+
+        <!-- Load More Button -->
+        <div id="load-more-container" class="hidden flex justify-center pb-12 mt-auto">
+            <button id="load-more-btn" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-800 dark:text-white px-8 py-3 rounded-full font-bold transition-colors shadow-sm flex items-center gap-2 border border-gray-300 dark:border-gray-600">
+                טען תוצאות נוספות <i class="fas fa-chevron-down text-sm"></i>
+            </button>
         </div>
     </main>
 
     <!-- Video Player Modal -->
     <div id="video-modal" class="fixed inset-0 z-50 bg-black/90 hidden items-center justify-center opacity-0 transition-opacity duration-300">
-        <!-- Floating Controls (Visible only in floating mode) -->
+        <!-- Floating Controls (Visible only in internal floating mode) -->
         <div class="floating-controls hidden" id="floating-controls">
-            <button id="float-close" class="p-2 hover:text-red-500 transition-colors"><i class="fas fa-times"></i></button>
+            <button id="float-close" class="p-1 hover:text-red-500 transition-colors flex items-center gap-1 text-sm font-bold bg-black/50 px-2 rounded">
+                <i class="fas fa-times"></i>
+            </button>
             <div class="flex items-center gap-3">
-                <span class="text-xs font-bold truncate max-w-[150px]" id="float-title"></span>
-                <button id="float-expand" class="p-2 hover:text-blue-400 transition-colors"><i class="fas fa-expand"></i></button>
+                <span class="text-xs font-bold truncate max-w-[120px] text-gray-300" id="float-title"></span>
+                <button id="float-expand" class="p-1 hover:text-blue-400 transition-colors flex items-center gap-1.5 text-sm font-bold bg-blue-600/50 px-3 rounded text-white border border-blue-500/50">
+                    <span class="text-xs">חזור לנגן</span> <i class="fas fa-expand"></i>
+                </button>
             </div>
         </div>
 
-        <div id="video-wrapper" class="w-full max-w-4xl max-h-screen overflow-y-auto bg-white dark:bg-cardDark sm:rounded-xl shadow-2xl relative flex flex-col transform scale-95 transition-transform duration-300">
+        <div id="video-wrapper" class="w-full max-w-4xl max-h-[100vh] sm:max-h-[90vh] overflow-y-auto bg-white dark:bg-cardDark sm:rounded-xl shadow-2xl relative flex flex-col transform scale-95 transition-transform duration-300">
             
             <!-- Sticky Video Container -->
             <div class="sticky top-0 z-10 bg-black">
-                <button id="close-modal" class="close-modal-btn absolute top-3 left-3 z-20 bg-black/50 hover:bg-black/80 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors backdrop-blur-sm">
+                <button id="close-modal" class="close-modal-btn absolute top-3 left-3 z-20 bg-black/50 hover:bg-black/80 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors backdrop-blur-sm shadow-md">
                     <i class="fas fa-times text-lg"></i>
                 </button>
-                <button id="pip-btn" class="close-modal-btn absolute top-3 left-16 z-20 bg-black/50 hover:bg-black/80 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors backdrop-blur-sm" title="תמונה בתוך תמונה / חלון צף">
-                    <i class="fas fa-external-link-alt text-sm"></i>
+                <button id="pip-btn" class="close-modal-btn absolute top-3 left-16 z-20 bg-black/50 hover:bg-black/80 text-white rounded-full px-4 h-10 flex items-center gap-2 justify-center transition-colors backdrop-blur-sm font-bold text-sm shadow-md" title="תמונה בתוך תמונה / חלון צף">
+                    חלון צף <i class="fas fa-clone"></i>
                 </button>
                 
                 <div class="video-container" id="iframe-container">
@@ -290,7 +302,7 @@
                 </div>
 
                 <div class="flex items-center mb-6">
-                    <img id="channel-avatar" src="" alt="Channel" class="w-10 h-10 rounded-full object-cover ml-3 bg-gray-200 dark:bg-gray-700">
+                    <img id="channel-avatar" src="" alt="Channel" class="w-10 h-10 rounded-full object-cover ml-3 bg-gray-200 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
                     <div>
                         <h3 id="video-channel" class="font-bold text-gray-900 dark:text-white text-base"></h3>
                         <p class="text-xs text-gray-500">ערוץ</p>
@@ -316,7 +328,10 @@
             maxResults: parseInt(localStorage.getItem('yt_max_results')) || 12,
             netfreeMode: localStorage.getItem('yt_netfree_mode') === 'true',
             isFloating: false,
-            currentVideoId: null
+            currentVideoId: null,
+            lastQuery: '',
+            pageToken: '',
+            pipWindow: null // עבור חלון צף מחוץ לאתר
         };
 
         // DOM Elements
@@ -344,6 +359,8 @@
             noApiMsg: document.getElementById('no-api-msg'),
             initialState: document.getElementById('initial-state'),
             resultsContainer: document.getElementById('results-container'),
+            loadMoreContainer: document.getElementById('load-more-container'),
+            loadMoreBtn: document.getElementById('load-more-btn'),
             videoModal: document.getElementById('video-modal'),
             videoWrapper: document.getElementById('video-wrapper'),
             closeModal: document.getElementById('close-modal'),
@@ -415,7 +432,6 @@
             if (!state.apiKey) {
                 elements.noApiMsg.classList.remove('hidden');
                 elements.initialState.classList.add('hidden');
-                // תיקון: גישה ישירה לכפתור החיפוש ולא דרך querySelector של type="submit"
                 elements.searchBtn.disabled = true; 
                 elements.searchInput.disabled = true;
             } else {
@@ -440,7 +456,6 @@
         function toggleSettings(show) {
             if (show) {
                 elements.settingsPanel.classList.remove('hidden');
-                // Force reflow
                 void elements.settingsPanel.offsetWidth;
                 elements.settingsPanel.classList.remove('opacity-0');
                 elements.settingsInner.classList.remove('translate-y-full');
@@ -466,7 +481,6 @@
             updateUIState();
             toggleSettings(false);
             
-            // If there's a search term and API key exists, trigger search
             if (state.apiKey && elements.searchInput.value.trim() && elements.resultsContainer.children.length === 0) {
                  elements.searchBtn.click();
             }
@@ -520,16 +534,16 @@
             });
         }
 
-        async function renderResultsWithNetfree(items) {
+        async function renderResultsWithNetfree(items, isLoadMore = false) {
             if (!state.netfreeMode) {
-                return renderResults(items);
+                return renderResults(items, isLoadMore);
             }
             
             let videosToTest = items.filter(item => item.id && item.id.kind === 'youtube#video').slice(0, 10);
             let otherItems = items.filter(item => !(item.id && item.id.kind === 'youtube#video'));
             
             if (videosToTest.length === 0) {
-                return renderResults(otherItems);
+                return renderResults(otherItems, isLoadMore);
             }
 
             let passedVideos = [];
@@ -545,55 +559,70 @@
             elements.loadingText.textContent = 'מחפש ביוטיוב...';
             
             if (passedVideos.length === 0 && otherItems.length === 0) {
-                elements.resultsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">לא נמצאו סרטונים פתוחים במקבץ זה (נחסמו ע"י סינון).</div>`;
+                if (!isLoadMore) {
+                    elements.resultsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">לא נמצאו סרטונים פתוחים במקבץ זה (נחסמו ע"י סינון). חפש מחדש.</div>`;
+                }
             } else {
-                renderResults([...otherItems, ...passedVideos]);
+                renderResults([...otherItems, ...passedVideos], isLoadMore);
             }
         }
 
         // YouTube API Search
-        async function performSearch(query) {
+        async function performSearch(query, isLoadMore = false) {
             if (!state.apiKey) return;
 
-            // UI Reset
-            elements.initialState.classList.add('hidden');
-            elements.noApiMsg.classList.add('hidden');
-            elements.errorMsg.classList.add('hidden');
-            elements.resultsContainer.innerHTML = '';
-            elements.loading.classList.remove('hidden');
-            elements.loading.classList.add('flex');
-            elements.loadingText.textContent = 'מחפש ביוטיוב...';
+            // Prepare UI and state based on whether it's a new search or load more
+            if (!isLoadMore) {
+                state.lastQuery = query;
+                state.pageToken = '';
+                elements.initialState.classList.add('hidden');
+                elements.noApiMsg.classList.add('hidden');
+                elements.errorMsg.classList.add('hidden');
+                elements.resultsContainer.innerHTML = '';
+                elements.loadMoreContainer.classList.add('hidden');
+                elements.loading.classList.remove('hidden');
+                elements.loading.classList.add('flex');
+                elements.loadingText.textContent = 'מחפש ביוטיוב...';
+            } else {
+                elements.loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> טוען...';
+                elements.loadMoreBtn.disabled = true;
+            }
 
-            // Check for direct video links
-            const videoMatch = query.match(/(?:v=|youtu\.be\/|shorts\/)([^&?]+)/);
+            const videoMatch = state.lastQuery.match(/(?:v=|youtu\.be\/|shorts\/)([^&?]+)/);
 
             try {
                 let combinedItems = [];
 
-                if (videoMatch) {
+                if (videoMatch && !isLoadMore) {
                     const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoMatch[1]}&key=${state.apiKey}`;
                     const statsRes = await fetch(statsUrl);
                     const statsData = await statsRes.json();
                     
                     if (!statsRes.ok) throw new Error(statsData.error?.message || 'שגיאה במשיכת הסרטון');
                     
-                    // Format to match search items
                     combinedItems = (statsData.items || []).map(i => ({
                         id: { kind: 'youtube#video', videoId: i.id },
                         snippet: i.snippet,
                         statistics: i.statistics,
                         contentDetails: i.contentDetails
                     }));
-                } else {
+                } else if (!videoMatch) {
                     // 1. Search Request
-                    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=${state.maxResults}&q=${encodeURIComponent(query)}&type=video,channel,playlist&key=${state.apiKey}`;
+                    let searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=${state.maxResults}&q=${encodeURIComponent(state.lastQuery)}&type=video,channel,playlist&key=${state.apiKey}`;
+                    if (state.pageToken) {
+                        searchUrl += `&pageToken=${state.pageToken}`;
+                    }
+
                     const searchRes = await fetch(searchUrl);
                     const searchData = await searchRes.json();
 
                     if (!searchRes.ok) throw new Error(searchData.error?.message || 'שגיאה בחיפוש');
+                    
+                    // Update Page Token for the next load
+                    state.pageToken = searchData.nextPageToken || '';
 
-                    if (searchData.items.length === 0) {
-                        elements.resultsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">לא נמצאו תוצאות ל"${escapeHtml(query)}"</div>`;
+                    if (searchData.items.length === 0 && !isLoadMore) {
+                        elements.resultsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">לא נמצאו תוצאות ל"${escapeHtml(state.lastQuery)}"</div>`;
                         elements.loading.classList.add('hidden');
                         elements.loading.classList.remove('flex');
                         return;
@@ -621,12 +650,19 @@
                     }
                 }
 
-                if (combinedItems.length === 0) {
-                    elements.resultsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">לא נמצאו תוצאות ל"${escapeHtml(query)}"</div>`;
+                if (combinedItems.length === 0 && !isLoadMore) {
+                    elements.resultsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">לא נמצאו תוצאות ל"${escapeHtml(state.lastQuery)}"</div>`;
                     return;
                 }
 
-                await renderResultsWithNetfree(combinedItems);
+                await renderResultsWithNetfree(combinedItems, isLoadMore);
+
+                // Show/Hide Load More Button based on token
+                if (state.pageToken) {
+                    elements.loadMoreContainer.classList.remove('hidden');
+                } else {
+                    elements.loadMoreContainer.classList.add('hidden');
+                }
 
             } catch (error) {
                 if (error.message === 'Failed to fetch') {
@@ -636,8 +672,13 @@
                 }
                 elements.errorMsg.classList.remove('hidden');
             } finally {
-                elements.loading.classList.add('hidden');
-                elements.loading.classList.remove('flex');
+                if (!isLoadMore) {
+                    elements.loading.classList.add('hidden');
+                    elements.loading.classList.remove('flex');
+                } else {
+                    elements.loadMoreBtn.innerHTML = 'טען תוצאות נוספות <i class="fas fa-chevron-down text-sm"></i>';
+                    elements.loadMoreBtn.disabled = false;
+                }
             }
         }
 
@@ -656,7 +697,7 @@
             return timeStr;
         }
 
-        function renderResults(items) {
+        function renderResults(items, isLoadMore = false) {
             const html = items.map(item => {
                 const snippet = item.snippet;
                 const title = decodeHtmlEntities(snippet.title);
@@ -665,7 +706,6 @@
                 const publishedAt = formatDate(snippet.publishedAt);
                 
                 if (item.id.kind === 'youtube#video') {
-                    // Render Video Card
                     const views = item.statistics?.viewCount ? formatNumber(item.statistics.viewCount) + ' צפיות' : '';
                     const duration = item.contentDetails?.duration ? formatDuration(item.contentDetails.duration) : '';
                     const videoId = item.id.videoId;
@@ -675,9 +715,9 @@
                              onclick="openVideo('${videoId}', \`${escapeHtml(title)}\`, \`${escapeHtml(channel)}\`, '${snippet.channelId}', '${snippet.publishedAt}', \`${escapeHtml(snippet.description || '')}\`)">
                             <div class="relative aspect-video bg-gray-200 dark:bg-gray-800">
                                 <img src="${thumb}" alt="${escapeHtml(title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
-                                ${duration ? `<div class="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">${duration}</div>` : ''}
+                                ${duration ? `<div class="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-bold tracking-wider">${duration}</div>` : ''}
                                 <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                    <i class="fas fa-play text-white opacity-0 group-hover:opacity-100 text-3xl drop-shadow-lg transform scale-50 group-hover:scale-100 transition-all duration-300"></i>
+                                    <i class="fas fa-play text-white opacity-0 group-hover:opacity-100 text-4xl drop-shadow-lg transform scale-50 group-hover:scale-100 transition-all duration-300"></i>
                                 </div>
                             </div>
                             <div class="p-3 flex gap-3 flex-1">
@@ -692,7 +732,6 @@
                         </div>
                     `;
                 } else if (item.id.kind === 'youtube#channel') {
-                    // Render Channel Card
                     return `
                         <a href="https://youtube.com/channel/${item.id.channelId}" target="_blank" 
                            class="bg-white dark:bg-cardDark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow group">
@@ -702,15 +741,14 @@
                         </a>
                     `;
                 } else if (item.id.kind === 'youtube#playlist') {
-                     // Render Playlist Card
                      return `
                         <a href="https://youtube.com/playlist?list=${item.id.playlistId}" target="_blank"
                            class="bg-white dark:bg-cardDark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
                             <div class="relative aspect-video bg-gray-200 dark:bg-gray-800">
                                 <img src="${thumb}" alt="${escapeHtml(title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
                                 <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
-                                    <i class="fas fa-list-ul text-2xl mb-1"></i>
-                                    <span class="text-xs font-medium">פלייליסט</span>
+                                    <i class="fas fa-list-ul text-3xl mb-2 drop-shadow-md"></i>
+                                    <span class="text-sm font-bold tracking-wide">פלייליסט</span>
                                 </div>
                             </div>
                             <div class="p-3">
@@ -723,7 +761,11 @@
                 return '';
             }).join('');
 
-            elements.resultsContainer.innerHTML = html;
+            if (isLoadMore) {
+                elements.resultsContainer.insertAdjacentHTML('beforeend', html);
+            } else {
+                elements.resultsContainer.innerHTML = html;
+            }
         }
 
         // Fetch specific video data (to get description and views if not passed fully, and channel avatar)
@@ -768,8 +810,7 @@
             elements.viewsCount.textContent = 'טוען...';
             elements.channelAvatar.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="%23ccc"/></svg>';
 
-            // Load iframe
-            // Note: Using youtube-nocookie for better privacy, autoplay enabled
+            // Load iframe with "allow=picture-in-picture" for native support triggers
             elements.iframeContainer.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
 
             // Reset state
@@ -781,7 +822,6 @@
             // Show Modal
             elements.videoModal.classList.remove('hidden');
             elements.videoModal.classList.add('flex');
-            // Force reflow
             void elements.videoModal.offsetWidth;
             elements.videoModal.classList.remove('opacity-0');
             elements.videoWrapper.classList.remove('scale-95');
@@ -791,6 +831,12 @@
         };
 
         function closeVideoModal() {
+            // אם במצב חלון צף חיצוני
+            if (state.pipWindow) {
+                state.pipWindow.close();
+                return;
+            }
+
             elements.videoModal.classList.add('opacity-0');
             elements.videoWrapper.classList.add('scale-95');
             
@@ -802,34 +848,96 @@
                 
                 // Reset float state if active
                 if(state.isFloating) {
-                    toggleFloatingMode(); 
+                    toggleFloatingMode(true); 
                 }
             }, 300);
         }
 
-        // Simulate Picture-in-Picture / Floating Mode within the app
-        function toggleFloatingMode() {
+        // Float Window Logic (Native Document PiP + In-App Fallback)
+        async function toggleFloatingMode(forceClose = false) {
             if (!state.currentVideoId) return;
 
+            // אם רוצים לסגור באופן מאולץ (כמו בלחיצה על כפתור סגירה בחלון צף פנימי)
+            if (forceClose && state.isFloating && !state.pipWindow) {
+                elements.videoWrapper.classList.remove('floating-video');
+                elements.videoWrapper.style.pointerEvents = '';
+                elements.videoModal.classList.remove('pointer-events-none', 'bg-transparent');
+                elements.videoModal.classList.add('bg-black/90', 'items-center', 'justify-center');
+                state.isFloating = false;
+                return;
+            }
+
+            // 1. ניסיון להשתמש בחלון צף חיצוני לגמרי (תומך במחשבים/דפדפנים חדשים כמו Chrome 116+)
+            if ('documentPictureInPicture' in window && !state.isFloating) {
+                try {
+                    state.pipWindow = await window.documentPictureInPicture.requestWindow({
+                        width: 400,
+                        height: 225
+                    });
+
+                    // עיצוב החלון הצף החיצוני
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        body { margin: 0; background: black; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
+                        #pip-container { width: 100%; height: 100%; position: relative; }
+                        iframe { width: 100%; height: 100%; border: none; }
+                        .pip-controls { position: absolute; top: 12px; left: 12px; z-index: 100; display: flex; gap: 8px; }
+                        .pip-btn { background: rgba(37, 99, 235, 0.8); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 13px; backdrop-filter: blur(4px); transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+                        .pip-btn:hover { background: rgba(29, 78, 216, 1); }
+                    `;
+                    state.pipWindow.document.head.appendChild(style);
+
+                    const container = document.createElement('div');
+                    container.id = 'pip-container';
+
+                    // כפתור חזרה לנגן בתוך החלון הצף החיצוני
+                    const controls = document.createElement('div');
+                    controls.className = 'pip-controls';
+                    
+                    const returnBtn = document.createElement('button');
+                    returnBtn.className = 'pip-btn';
+                    returnBtn.innerHTML = 'חזור לנגן ⤢';
+                    returnBtn.onclick = () => state.pipWindow.close();
+
+                    controls.appendChild(returnBtn);
+                    container.appendChild(controls);
+
+                    // העברת הוידאו לחלון החדש
+                    const iframe = elements.iframeContainer.querySelector('iframe');
+                    container.appendChild(iframe);
+                    state.pipWindow.document.body.appendChild(container);
+
+                    // האזנה לסגירת החלון הצף - כדי להחזיר את הוידאו לאתר
+                    state.pipWindow.addEventListener('pagehide', () => {
+                        elements.iframeContainer.appendChild(iframe);
+                        state.pipWindow = null;
+                        state.isFloating = false;
+                        elements.videoModal.classList.remove('hidden');
+                        elements.videoModal.classList.add('flex');
+                    });
+
+                    // הסתרת המודל הראשי באתר
+                    elements.videoModal.classList.add('hidden');
+                    elements.videoModal.classList.remove('flex');
+                    
+                    state.isFloating = true;
+                    return; // הצליח - יוצא מהפונקציה
+                } catch (e) {
+                    console.log("חלון צף חיצוני לא נתמך במלואו במכשיר/דפדפן זה, עובר למצב צף פנימי", e);
+                }
+            }
+
+            // 2. גיבוי אוטומטי (מובייל / דפדפנים ללא תמיכה ב-API החיצוני):
+            // חלון צף פנימי שמרחף מעל כל האתר ללא הגבלה
             state.isFloating = !state.isFloating;
 
             if (state.isFloating) {
-                // Enter floating mode
                 elements.videoWrapper.classList.add('floating-video');
                 elements.videoModal.classList.add('pointer-events-none', 'bg-transparent');
                 elements.videoModal.classList.remove('bg-black/90', 'items-center', 'justify-center');
-                // Make the wrapper catch events even though parent is pointer-events-none
+                // מאפשר לחיצות על החלון עצמו למרות שהרקע לא לחיץ יותר
                 elements.videoWrapper.style.pointerEvents = 'auto'; 
-                
-                // Try to use Native PiP if supported (Desktop mainly)
-                const iframe = elements.iframeContainer.querySelector('iframe');
-                if (document.pictureInPictureEnabled && iframe) {
-                     // Note: Native PiP for cross-origin iframes is restricted in many browsers.
-                     // The CSS simulated float is the primary fallback for mobile web.
-                }
-
             } else {
-                // Exit floating mode
                 elements.videoWrapper.classList.remove('floating-video');
                 elements.videoWrapper.style.pointerEvents = '';
                 elements.videoModal.classList.remove('pointer-events-none', 'bg-transparent');
@@ -868,6 +976,13 @@
                 elements.searchInput.focus();
             });
 
+            // Load More button
+            elements.loadMoreBtn.addEventListener('click', () => {
+                if (state.lastQuery && state.pageToken) {
+                    performSearch(state.lastQuery, true);
+                }
+            });
+
             // Settings
             elements.settingsBtn.addEventListener('click', () => toggleSettings(true));
             elements.closeSettings.addEventListener('click', () => toggleSettings(false));
@@ -891,10 +1006,14 @@
 
             // Video Modal
             elements.closeModal.addEventListener('click', closeVideoModal);
-            elements.floatClose.addEventListener('click', closeVideoModal);
             
-            elements.pipBtn.addEventListener('click', toggleFloatingMode);
-            elements.floatExpand.addEventListener('click', toggleFloatingMode);
+            // Buttons inside the floating window
+            elements.floatClose.addEventListener('click', () => {
+                closeVideoModal();
+            });
+            
+            elements.pipBtn.addEventListener('click', () => toggleFloatingMode());
+            elements.floatExpand.addEventListener('click', () => toggleFloatingMode()); // חזור לנגן בפנימי
 
             // Close modal on background click (only if not floating)
             elements.videoModal.addEventListener('click', (e) => {
@@ -903,15 +1022,9 @@
                 }
             });
 
-            // Page Visibility API (Keep playing when minimized/tab changed)
-            // Browsers naturally pause media sometimes. To keep audio playing in background on mobile web,
-            // it heavily depends on OS and browser policies. The iframe generally continues playing
-            // unless the browser forces a pause to save battery.
+            // Page Visibility API - אם ממזערים את הדפדפן, הוא מנסה לעבור למצב צף אוטומטי
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden' && state.currentVideoId && !state.isFloating) {
-                    // Automatically switch to floating mode if app is minimized while watching
-                    // so when they return, it's floating (simulates PiP behavior)
-                    // Note: True background playback for web is restricted on iOS Safari.
                     toggleFloatingMode();
                 }
             });
