@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>חיפוש ביוטיוב</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#FF0000',
+                        bgDark: '#0f0f0f',
+                        cardDark: '#212121',
+                        textDark: '#f1f1f1',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            transition: background-color 0.3s, color 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;  
+            overflow: hidden;
+        }
+
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;  
+            overflow: hidden;
+        }
+
+        /* Video Player Modal Styles */
+        #video-modal {
+            backdrop-filter: blur(5px);
+            transition: opacity 0.3s ease;
+        }
+
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            height: 0;
+            overflow: hidden;
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Floating Video (PiP fallback simulation for within app) */
+        .floating-video {
+            position: fixed !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            width: 300px !important;
+            height: auto !important;
+            z-index: 50 !important;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            background: black;
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .floating-video .video-container {
+             padding-bottom: 56.25%;
+        }
+
+        .floating-video .video-details,
+        .floating-video .close-modal-btn {
+            display: none !important;
+        }
+        
+        .floating-controls {
+            display: none;
+            position: absolute;
+            top: -30px;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 8px 8px 0 0;
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .floating-video .floating-controls {
+            display: flex;
+        }
+        
+        /* Hide scrollbar for cleaner look */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 transition-colors duration-200 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-40 bg-white dark:bg-bgDark shadow-sm border-b border-gray-200 dark:border-gray-800 transition-colors duration-200">
+        <div class="px-4 py-3 flex items-center justify-between gap-3">
+            <button id="settings-btn" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors">
+                <i class="fas fa-cog text-xl"></i>
+            </button>
+            
+            <form id="search-form" class="flex-1 flex items-center bg-gray-100 dark:bg-cardDark rounded-full px-4 py-2 border border-transparent focus-within:border-blue-500 focus-within:bg-white dark:focus-within:bg-bgDark transition-all" onsubmit="event.preventDefault(); document.getElementById('search-btn').click();">
+                <button type="button" id="search-btn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-2">
+                    <i class="fas fa-search"></i>
+                </button>
+                <input type="text" id="search-input" placeholder="חיפוש ביוטיוב..." required
+                    class="w-full bg-transparent border-none outline-none text-sm sm:text-base text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
+                <button type="button" id="clear-search" class="hidden text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 mr-2">
+                    <i class="fas fa-times"></i>
+                </button>
+            </form>
+        </div>
+    </header>
+
+    <!-- Settings Panel (Hidden by default) -->
+    <div id="settings-panel" class="fixed inset-0 z-50 bg-black/50 hidden opacity-0 transition-opacity duration-300">
+        <div class="absolute bottom-0 w-full bg-white dark:bg-cardDark rounded-t-2xl transform translate-y-full transition-transform duration-300 ease-out shadow-2xl">
+            <div class="p-5">
+                <div class="flex justify-between items-center mb-6 border-b border-gray-200 dark:border-gray-700 pb-3">
+                    <h2 class="text-xl font-bold dark:text-white">הגדרות</h2>
+                    <button id="close-settings" class="p-2 text-gray-500 hover:text-gray-800 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-5">
+                    <!-- API Key -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">מפתח API (YouTube Data API v3)</label>
+                        <input type="password" id="api-key-input" placeholder="הכנס מפתח API כאן..."
+                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-bgDark dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all">
+                        <p class="text-xs text-gray-500 mt-1">נדרש לביצוע חיפושים. <a href="https://console.cloud.google.com/" target="_blank" class="text-blue-500 hover:underline">קבל מפתח</a>.</p>
+                    </div>
+
+                    <!-- Theme Toggle -->
+                    <div class="flex items-center justify-between">
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">מצב תצוגה</label>
+                        <div class="flex bg-gray-100 dark:bg-bgDark rounded-lg p-1">
+                            <button id="theme-light" class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white shadow text-gray-900">
+                                <i class="fas fa-sun ml-1"></i> בהיר
+                            </button>
+                            <button id="theme-dark" class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                                <i class="fas fa-moon ml-1"></i> כהה
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Max Results -->
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">כמות תוצאות מקסימלית</label>
+                            <span id="max-results-val" class="text-sm font-bold text-blue-600 dark:text-blue-400">12</span>
+                        </div>
+                        <input type="range" id="max-results-input" min="6" max="50" value="12" step="1"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>6</span>
+                            <span>50</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="save-settings" class="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-colors shadow-lg shadow-blue-500/30">
+                    שמור וסגור
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-4 w-full max-w-4xl mx-auto">
+        
+        <!-- Loading State -->
+        <div id="loading" class="hidden flex-col items-center justify-center py-20">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-red-500 mb-4"></div>
+            <p class="text-gray-500 dark:text-gray-400 animate-pulse">מחפש ביוטיוב...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-message" class="hidden bg-red-100 border-r-4 border-red-500 text-red-700 p-4 rounded-lg mb-6 shadow-sm">
+            <p class="font-bold flex items-center"><i class="fas fa-exclamation-triangle ml-2"></i>שגיאה</p>
+            <p id="error-text" class="text-sm mt-1">אירעה שגיאה בחיפוש.</p>
+        </div>
+
+        <!-- No API Key Message -->
+        <div id="no-api-msg" class="flex flex-col items-center justify-center py-20 text-center px-4">
+            <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4 text-gray-400 dark:text-gray-500">
+                <i class="fas fa-key text-3xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">חסר מפתח API</h3>
+            <p class="text-gray-500 dark:text-gray-400 mb-6 max-w-md">כדי להתחיל לחפש, אנא הזן מפתח YouTube Data API v3 בהגדרות.</p>
+            <button onclick="document.getElementById('settings-btn').click()" class="bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-6 py-2 rounded-full font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors shadow-md">
+                פתח הגדרות
+            </button>
+        </div>
+
+        <!-- Initial/Empty State -->
+        <div id="initial-state" class="hidden flex-col items-center justify-center py-20 text-center px-4">
+            <i class="fab fa-youtube text-6xl text-gray-300 dark:text-gray-700 mb-4"></i>
+            <p class="text-gray-500 dark:text-gray-400 text-lg">חפש סרטונים, ערוצים ופלייליסטים</p>
+        </div>
+
+        <!-- Results Grid -->
+        <div id="results-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 pb-20">
+            <!-- Results will be injected here -->
+        </div>
+    </main>
+
+    <!-- Video Player Modal -->
+    <div id="video-modal" class="fixed inset-0 z-50 bg-black/90 hidden items-center justify-center opacity-0 transition-opacity duration-300">
+        <!-- Floating Controls (Visible only in floating mode) -->
+        <div class="floating-controls hidden" id="floating-controls">
+            <button id="float-close" class="p-2 hover:text-red-500 transition-colors"><i class="fas fa-times"></i></button>
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-bold truncate max-w-[150px]" id="float-title"></span>
+                <button id="float-expand" class="p-2 hover:text-blue-400 transition-colors"><i class="fas fa-expand"></i></button>
+            </div>
+        </div>
+
+        <div id="video-wrapper" class="w-full max-w-4xl max-h-screen overflow-y-auto bg-white dark:bg-cardDark sm:rounded-xl shadow-2xl relative flex flex-col transform scale-95 transition-transform duration-300">
+            
+            <!-- Sticky Video Container -->
+            <div class="sticky top-0 z-10 bg-black">
+                <button id="close-modal" class="close-modal-btn absolute top-3 left-3 z-20 bg-black/50 hover:bg-black/80 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors backdrop-blur-sm">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+                <button id="pip-btn" class="close-modal-btn absolute top-3 left-16 z-20 bg-black/50 hover:bg-black/80 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors backdrop-blur-sm" title="תמונה בתוך תמונה / חלון צף">
+                    <i class="fas fa-external-link-alt text-sm"></i>
+                </button>
+                
+                <div class="video-container" id="iframe-container">
+                    <!-- Iframe injected here -->
+                </div>
+            </div>
+
+            <!-- Video Details -->
+            <div class="video-details p-4 sm:p-6 flex-1 bg-white dark:bg-cardDark">
+                <h2 id="video-title" class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2 leading-tight"></h2>
+                
+                <div class="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-4 border-b border-gray-200 dark:border-gray-700 pb-4">
+                    <span id="video-views" class="font-medium bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full"><i class="fas fa-eye ml-1"></i> <span id="views-count"></span></span>
+                    <span class="mx-2">•</span>
+                    <span id="video-date"></span>
+                </div>
+
+                <div class="flex items-center mb-6">
+                    <img id="channel-avatar" src="" alt="Channel" class="w-10 h-10 rounded-full object-cover ml-3 bg-gray-200 dark:bg-gray-700">
+                    <div>
+                        <h3 id="video-channel" class="font-bold text-gray-900 dark:text-white text-base"></h3>
+                        <p class="text-xs text-gray-500">ערוץ</p>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 dark:bg-bgDark p-4 rounded-xl border border-gray-100 dark:border-gray-800">
+                    <h4 class="font-bold text-gray-900 dark:text-white mb-2 text-sm">תיאור</h4>
+                    <p id="video-description" class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed font-sans"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            apiKey: localStorage.getItem('yt_api_key') || '',
+            theme: localStorage.getItem('yt_theme') || 'light',
+            maxResults: parseInt(localStorage.getItem('yt_max_results')) || 12,
+            isFloating: false,
+            currentVideoId: null
+        };
+
+        // DOM Elements
+        const elements = {
+            html: document.documentElement,
+            settingsBtn: document.getElementById('settings-btn'),
+            settingsPanel: document.getElementById('settings-panel'),
+            settingsInner: document.querySelector('#settings-panel > div'),
+            closeSettings: document.getElementById('close-settings'),
+            saveSettings: document.getElementById('save-settings'),
+            apiKeyInput: document.getElementById('api-key-input'),
+            themeLight: document.getElementById('theme-light'),
+            themeDark: document.getElementById('theme-dark'),
+            maxResultsInput: document.getElementById('max-results-input'),
+            maxResultsVal: document.getElementById('max-results-val'),
+            searchForm: document.getElementById('search-form'),
+            searchInput: document.getElementById('search-input'),
+            searchBtn: document.getElementById('search-btn'),
+            clearSearch: document.getElementById('clear-search'),
+            loading: document.getElementById('loading'),
+            errorMsg: document.getElementById('error-message'),
+            errorText: document.getElementById('error-text'),
+            noApiMsg: document.getElementById('no-api-msg'),
+            initialState: document.getElementById('initial-state'),
+            resultsContainer: document.getElementById('results-container'),
+            videoModal: document.getElementById('video-modal'),
+            videoWrapper: document.getElementById('video-wrapper'),
+            closeModal: document.getElementById('close-modal'),
+            iframeContainer: document.getElementById('iframe-container'),
+            videoTitle: document.getElementById('video-title'),
+            viewsCount: document.getElementById('views-count'),
+            videoDate: document.getElementById('video-date'),
+            channelAvatar: document.getElementById('channel-avatar'),
+            videoChannel: document.getElementById('video-channel'),
+            videoDescription: document.getElementById('video-description'),
+            pipBtn: document.getElementById('pip-btn'),
+            floatClose: document.getElementById('float-close'),
+            floatExpand: document.getElementById('float-expand'),
+            floatTitle: document.getElementById('float-title')
+        };
+
+        // Initialize App
+        function init() {
+            applyTheme(state.theme);
+            updateUIState();
+            setupEventListeners();
+        }
+
+        // Formatters
+        const formatNumber = (num) => {
+            if (!num) return 'N/A';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return new Intl.NumberFormat('he-IL').format(num);
+        };
+
+        const formatDate = (dateString) => {
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString('he-IL', options);
+        };
+
+        const escapeHtml = (unsafe) => {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        };
+
+        const decodeHtmlEntities = (text) => {
+            const textArea = document.createElement('textarea');
+            textArea.innerHTML = text;
+            return textArea.value;
+        };
+
+        // UI Updates
+        function updateUIState() {
+            elements.apiKeyInput.value = state.apiKey;
+            elements.maxResultsInput.value = state.maxResults;
+            elements.maxResultsVal.textContent = state.maxResults;
+            
+            if (state.theme === 'dark') {
+                elements.themeDark.classList.replace('text-gray-500', 'bg-white');
+                elements.themeDark.classList.replace('text-gray-400', 'text-gray-900');
+                elements.themeDark.classList.add('shadow');
+                elements.themeLight.className = 'px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+            } else {
+                elements.themeLight.className = 'px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white shadow text-gray-900';
+                elements.themeDark.className = 'px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+            }
+
+            if (!state.apiKey) {
+                elements.noApiMsg.classList.remove('hidden');
+                elements.initialState.classList.add('hidden');
+                // תיקון: גישה ישירה לכפתור החיפוש ולא דרך querySelector של type="submit"
+                elements.searchBtn.disabled = true; 
+                elements.searchInput.disabled = true;
+            } else {
+                elements.noApiMsg.classList.add('hidden');
+                if (elements.resultsContainer.children.length === 0) {
+                    elements.initialState.classList.remove('hidden');
+                }
+                elements.searchBtn.disabled = false;
+                elements.searchInput.disabled = false;
+            }
+        }
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                elements.html.classList.add('dark');
+            } else {
+                elements.html.classList.remove('dark');
+            }
+        }
+
+        // Settings Panel Logic
+        function toggleSettings(show) {
+            if (show) {
+                elements.settingsPanel.classList.remove('hidden');
+                // Force reflow
+                void elements.settingsPanel.offsetWidth;
+                elements.settingsPanel.classList.remove('opacity-0');
+                elements.settingsInner.classList.remove('translate-y-full');
+            } else {
+                elements.settingsPanel.classList.add('opacity-0');
+                elements.settingsInner.classList.add('translate-y-full');
+                setTimeout(() => {
+                    elements.settingsPanel.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        function saveSettings() {
+            state.apiKey = elements.apiKeyInput.value.trim();
+            state.maxResults = parseInt(elements.maxResultsInput.value);
+            
+            localStorage.setItem('yt_api_key', state.apiKey);
+            localStorage.setItem('yt_theme', state.theme);
+            localStorage.setItem('yt_max_results', state.maxResults);
+            
+            updateUIState();
+            toggleSettings(false);
+            
+            // If there's a search term and API key exists, trigger search
+            if (state.apiKey && elements.searchInput.value.trim() && elements.resultsContainer.children.length === 0) {
+                 elements.searchBtn.click();
+            }
+        }
+
+        // YouTube API Search
+        async function performSearch(query) {
+            if (!state.apiKey) return;
+
+            // UI Reset
+            elements.initialState.classList.add('hidden');
+            elements.noApiMsg.classList.add('hidden');
+            elements.errorMsg.classList.add('hidden');
+            elements.resultsContainer.innerHTML = '';
+            elements.loading.classList.remove('hidden');
+            elements.loading.classList.add('flex');
+
+            try {
+                // 1. Search Request
+                const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=${state.maxResults}&q=${encodeURIComponent(query)}&type=video,channel,playlist&key=${state.apiKey}`;
+                const searchRes = await fetch(searchUrl);
+                const searchData = await searchRes.json();
+
+                if (!searchRes.ok) throw new Error(searchData.error?.message || 'שגיאה בחיפוש');
+
+                if (searchData.items.length === 0) {
+                    elements.resultsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">לא נמצאו תוצאות ל"${escapeHtml(query)}"</div>`;
+                    elements.loading.classList.add('hidden');
+                    elements.loading.classList.remove('flex');
+                    return;
+                }
+
+                // 2. Fetch extra details (views, duration) for videos
+                const videoIds = searchData.items.filter(item => item.id.videoId).map(item => item.id.videoId).join(',');
+                let videoDetailsMap = {};
+                
+                if (videoIds) {
+                    const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=${videoIds}&key=${state.apiKey}`;
+                    const statsRes = await fetch(statsUrl);
+                    if (statsRes.ok) {
+                        const statsData = await statsRes.json();
+                        statsData.items.forEach(v => {
+                            videoDetailsMap[v.id] = {
+                                views: v.statistics.viewCount,
+                                duration: formatDuration(v.contentDetails.duration)
+                            };
+                        });
+                    }
+                }
+
+                renderResults(searchData.items, videoDetailsMap);
+
+            } catch (error) {
+                elements.errorText.textContent = error.message;
+                elements.errorMsg.classList.remove('hidden');
+            } finally {
+                elements.loading.classList.add('hidden');
+                elements.loading.classList.remove('flex');
+            }
+        }
+
+        // Parse YouTube ISO 8601 duration
+        function formatDuration(pt) {
+            const match = pt.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+            if (!match) return '';
+            
+            const h = (parseInt(match[1]) || 0);
+            const m = (parseInt(match[2]) || 0);
+            const s = (parseInt(match[3]) || 0);
+            
+            let timeStr = '';
+            if (h > 0) timeStr += `${h}:`;
+            timeStr += `${h > 0 ? m.toString().padStart(2, '0') : m}:${s.toString().padStart(2, '0')}`;
+            return timeStr;
+        }
+
+        function renderResults(items, videoDetailsMap) {
+            const html = items.map(item => {
+                const snippet = item.snippet;
+                const title = decodeHtmlEntities(snippet.title);
+                const channel = decodeHtmlEntities(snippet.channelTitle);
+                const thumb = snippet.thumbnails.medium?.url || snippet.thumbnails.default?.url;
+                const publishedAt = formatDate(snippet.publishedAt);
+                
+                if (item.id.videoId) {
+                    // Render Video Card
+                    const details = videoDetailsMap[item.id.videoId] || {};
+                    const views = details.views ? formatNumber(details.views) + ' צפיות' : '';
+                    const duration = details.duration || '';
+
+                    return `
+                        <div class="bg-white dark:bg-cardDark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden cursor-pointer hover:shadow-md transition-shadow group flex flex-col" 
+                             onclick="openVideo('${item.id.videoId}', \`${escapeHtml(title)}\`, \`${escapeHtml(channel)}\`, '${snippet.channelId}', '${snippet.publishedAt}', \`${escapeHtml(snippet.description)}\`)">
+                            <div class="relative aspect-video bg-gray-200 dark:bg-gray-800">
+                                <img src="${thumb}" alt="${escapeHtml(title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
+                                ${duration ? `<div class="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">${duration}</div>` : ''}
+                                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                    <i class="fas fa-play text-white opacity-0 group-hover:opacity-100 text-3xl drop-shadow-lg transform scale-50 group-hover:scale-100 transition-all duration-300"></i>
+                                </div>
+                            </div>
+                            <div class="p-3 flex gap-3 flex-1">
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-semibold text-gray-900 dark:text-white text-sm leading-tight line-clamp-2 mb-1" title="${escapeHtml(title)}">${title}</h3>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        <p class="truncate hover:text-gray-700 dark:hover:text-gray-300">${channel}</p>
+                                        <p class="mt-0.5">${views} ${views ? '•' : ''} ${publishedAt}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else if (item.id.channelId) {
+                    // Render Channel Card
+                    return `
+                        <a href="https://youtube.com/channel/${item.id.channelId}" target="_blank" 
+                           class="bg-white dark:bg-cardDark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow group">
+                            <img src="${thumb}" alt="${escapeHtml(title)}" class="w-20 h-20 rounded-full object-cover mb-3 group-hover:scale-105 transition-transform">
+                            <h3 class="font-bold text-gray-900 dark:text-white mb-1">${title}</h3>
+                            <span class="text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-1 rounded-full mt-2">ערוץ</span>
+                        </a>
+                    `;
+                } else if (item.id.playlistId) {
+                     // Render Playlist Card
+                     return `
+                        <a href="https://youtube.com/playlist?list=${item.id.playlistId}" target="_blank"
+                           class="bg-white dark:bg-cardDark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
+                            <div class="relative aspect-video bg-gray-200 dark:bg-gray-800">
+                                <img src="${thumb}" alt="${escapeHtml(title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
+                                <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
+                                    <i class="fas fa-list-ul text-2xl mb-1"></i>
+                                    <span class="text-xs font-medium">פלייליסט</span>
+                                </div>
+                            </div>
+                            <div class="p-3">
+                                <h3 class="font-semibold text-gray-900 dark:text-white text-sm line-clamp-2 mb-1">${title}</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">${channel}</p>
+                            </div>
+                        </a>
+                    `;
+                }
+                return '';
+            }).join('');
+
+            elements.resultsContainer.innerHTML = html;
+        }
+
+        // Fetch specific video data (to get description and views if not passed fully, and channel avatar)
+        async function fetchVideoDetails(videoId, channelId) {
+             try {
+                // Fetch stats
+                const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${state.apiKey}`;
+                const statsRes = await fetch(statsUrl);
+                if (statsRes.ok) {
+                    const statsData = await statsRes.json();
+                    if(statsData.items.length > 0) {
+                        elements.viewsCount.textContent = formatNumber(statsData.items[0].statistics.viewCount);
+                    }
+                }
+
+                // Fetch Channel Avatar
+                if(channelId) {
+                    const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${state.apiKey}`;
+                    const channelRes = await fetch(channelUrl);
+                    if(channelRes.ok) {
+                        const channelData = await channelRes.json();
+                        if(channelData.items.length > 0) {
+                             elements.channelAvatar.src = channelData.items[0].snippet.thumbnails.default.url;
+                        }
+                    }
+                }
+             } catch (e) {
+                 console.error("Failed fetching extra details", e);
+             }
+        }
+
+        // Open Video Modal
+        window.openVideo = function(videoId, title, channel, channelId, date, description) {
+            state.currentVideoId = videoId;
+            
+            // Populate Modal UI
+            elements.videoTitle.textContent = title;
+            elements.floatTitle.textContent = title;
+            elements.videoChannel.textContent = channel;
+            elements.videoDate.textContent = formatDate(date);
+            elements.videoDescription.textContent = description || 'אין תיאור זמין.';
+            elements.viewsCount.textContent = 'טוען...';
+            elements.channelAvatar.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="%23ccc"/></svg>';
+
+            // Load iframe
+            // Note: Using youtube-nocookie for better privacy, autoplay enabled
+            elements.iframeContainer.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+
+            // Reset state
+            state.isFloating = false;
+            elements.videoWrapper.classList.remove('floating-video');
+            elements.videoModal.classList.remove('pointer-events-none', 'bg-transparent');
+            elements.videoModal.classList.add('bg-black/90');
+            
+            // Show Modal
+            elements.videoModal.classList.remove('hidden');
+            elements.videoModal.classList.add('flex');
+            // Force reflow
+            void elements.videoModal.offsetWidth;
+            elements.videoModal.classList.remove('opacity-0');
+            elements.videoWrapper.classList.remove('scale-95');
+
+            // Fetch extra details asynchronously
+            fetchVideoDetails(videoId, channelId);
+        };
+
+        function closeVideoModal() {
+            elements.videoModal.classList.add('opacity-0');
+            elements.videoWrapper.classList.add('scale-95');
+            
+            setTimeout(() => {
+                elements.videoModal.classList.add('hidden');
+                elements.videoModal.classList.remove('flex');
+                elements.iframeContainer.innerHTML = ''; // Stop video playback
+                state.currentVideoId = null;
+                
+                // Reset float state if active
+                if(state.isFloating) {
+                    toggleFloatingMode(); 
+                }
+            }, 300);
+        }
+
+        // Simulate Picture-in-Picture / Floating Mode within the app
+        function toggleFloatingMode() {
+            if (!state.currentVideoId) return;
+
+            state.isFloating = !state.isFloating;
+
+            if (state.isFloating) {
+                // Enter floating mode
+                elements.videoWrapper.classList.add('floating-video');
+                elements.videoModal.classList.add('pointer-events-none', 'bg-transparent');
+                elements.videoModal.classList.remove('bg-black/90', 'items-center', 'justify-center');
+                // Make the wrapper catch events even though parent is pointer-events-none
+                elements.videoWrapper.style.pointerEvents = 'auto'; 
+                
+                // Try to use Native PiP if supported (Desktop mainly)
+                const iframe = elements.iframeContainer.querySelector('iframe');
+                if (document.pictureInPictureEnabled && iframe) {
+                     // Note: Native PiP for cross-origin iframes is restricted in many browsers.
+                     // The CSS simulated float is the primary fallback for mobile web.
+                }
+
+            } else {
+                // Exit floating mode
+                elements.videoWrapper.classList.remove('floating-video');
+                elements.videoWrapper.style.pointerEvents = '';
+                elements.videoModal.classList.remove('pointer-events-none', 'bg-transparent');
+                elements.videoModal.classList.add('bg-black/90', 'items-center', 'justify-center');
+            }
+        }
+
+        function setupEventListeners() {
+            // Search form
+            elements.searchBtn.addEventListener('click', () => {
+                const query = elements.searchInput.value.trim();
+                if (query) {
+                    performSearch(query);
+                    elements.searchInput.blur(); // Hide keyboard on mobile
+                }
+            });
+            
+            elements.searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    elements.searchBtn.click();
+                }
+            });
+
+            elements.searchInput.addEventListener('input', (e) => {
+                if (e.target.value.trim().length > 0) {
+                    elements.clearSearch.classList.remove('hidden');
+                } else {
+                    elements.clearSearch.classList.add('hidden');
+                }
+            });
+
+            elements.clearSearch.addEventListener('click', () => {
+                elements.searchInput.value = '';
+                elements.clearSearch.classList.add('hidden');
+                elements.searchInput.focus();
+            });
+
+            // Settings
+            elements.settingsBtn.addEventListener('click', () => toggleSettings(true));
+            elements.closeSettings.addEventListener('click', () => toggleSettings(false));
+            elements.saveSettings.addEventListener('click', saveSettings);
+            
+            elements.themeLight.addEventListener('click', () => {
+                state.theme = 'light';
+                applyTheme('light');
+                updateUIState();
+            });
+            
+            elements.themeDark.addEventListener('click', () => {
+                state.theme = 'dark';
+                applyTheme('dark');
+                updateUIState();
+            });
+
+            elements.maxResultsInput.addEventListener('input', (e) => {
+                elements.maxResultsVal.textContent = e.target.value;
+            });
+
+            // Video Modal
+            elements.closeModal.addEventListener('click', closeVideoModal);
+            elements.floatClose.addEventListener('click', closeVideoModal);
+            
+            elements.pipBtn.addEventListener('click', toggleFloatingMode);
+            elements.floatExpand.addEventListener('click', toggleFloatingMode);
+
+            // Close modal on background click (only if not floating)
+            elements.videoModal.addEventListener('click', (e) => {
+                if (e.target === elements.videoModal && !state.isFloating) {
+                    closeVideoModal();
+                }
+            });
+
+            // Page Visibility API (Keep playing when minimized/tab changed)
+            // Browsers naturally pause media sometimes. To keep audio playing in background on mobile web,
+            // it heavily depends on OS and browser policies. The iframe generally continues playing
+            // unless the browser forces a pause to save battery.
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden' && state.currentVideoId && !state.isFloating) {
+                    // Automatically switch to floating mode if app is minimized while watching
+                    // so when they return, it's floating (simulates PiP behavior)
+                    // Note: True background playback for web is restricted on iOS Safari.
+                    toggleFloatingMode();
+                }
+            });
+        }
+
+        // Run
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
