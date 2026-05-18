@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>חיפוש ביוטיוב</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
@@ -178,6 +179,18 @@
                         </div>
                     </div>
 
+                    <!-- Netfree Toggle -->
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">סינון נטפרי</label>
+                            <p class="text-[10px] text-gray-500 mt-1">בודק ומוחק סרטונים חסומים (מאט את החיפוש)</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="netfree-mode-input" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+
                     <!-- Max Results -->
                     <div>
                         <div class="flex justify-between mb-1">
@@ -206,7 +219,7 @@
         <!-- Loading State -->
         <div id="loading" class="hidden flex-col items-center justify-center py-20">
             <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-red-500 mb-4"></div>
-            <p class="text-gray-500 dark:text-gray-400 animate-pulse">מחפש ביוטיוב...</p>
+            <p id="loading-text" class="text-gray-500 dark:text-gray-400 animate-pulse">מחפש ביוטיוב...</p>
         </div>
 
         <!-- Error Message -->
@@ -292,12 +305,16 @@
         </div>
     </div>
 
+    <!-- Netfree Tester Container -->
+    <div id="netfree-tester-container" style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0;"></div>
+
     <script>
         // State
         const state = {
             apiKey: localStorage.getItem('yt_api_key') || '',
             theme: localStorage.getItem('yt_theme') || 'light',
             maxResults: parseInt(localStorage.getItem('yt_max_results')) || 12,
+            netfreeMode: localStorage.getItem('yt_netfree_mode') === 'true',
             isFloating: false,
             currentVideoId: null
         };
@@ -313,6 +330,7 @@
             apiKeyInput: document.getElementById('api-key-input'),
             themeLight: document.getElementById('theme-light'),
             themeDark: document.getElementById('theme-dark'),
+            netfreeModeInput: document.getElementById('netfree-mode-input'),
             maxResultsInput: document.getElementById('max-results-input'),
             maxResultsVal: document.getElementById('max-results-val'),
             searchForm: document.getElementById('search-form'),
@@ -320,6 +338,7 @@
             searchBtn: document.getElementById('search-btn'),
             clearSearch: document.getElementById('clear-search'),
             loading: document.getElementById('loading'),
+            loadingText: document.getElementById('loading-text'),
             errorMsg: document.getElementById('error-message'),
             errorText: document.getElementById('error-text'),
             noApiMsg: document.getElementById('no-api-msg'),
@@ -381,6 +400,7 @@
             elements.apiKeyInput.value = state.apiKey;
             elements.maxResultsInput.value = state.maxResults;
             elements.maxResultsVal.textContent = state.maxResults;
+            elements.netfreeModeInput.checked = state.netfreeMode;
             
             if (state.theme === 'dark') {
                 elements.themeDark.classList.replace('text-gray-500', 'bg-white');
@@ -436,10 +456,12 @@
         function saveSettings() {
             state.apiKey = elements.apiKeyInput.value.trim();
             state.maxResults = parseInt(elements.maxResultsInput.value);
+            state.netfreeMode = elements.netfreeModeInput.checked;
             
             localStorage.setItem('yt_api_key', state.apiKey);
             localStorage.setItem('yt_theme', state.theme);
             localStorage.setItem('yt_max_results', state.maxResults);
+            localStorage.setItem('yt_netfree_mode', state.netfreeMode);
             
             updateUIState();
             toggleSettings(false);
@@ -447,6 +469,85 @@
             // If there's a search term and API key exists, trigger search
             if (state.apiKey && elements.searchInput.value.trim() && elements.resultsContainer.children.length === 0) {
                  elements.searchBtn.click();
+            }
+        }
+
+        // --- Netfree Tester Logic ---
+        function testVideoNetfree(videoId) {
+            return new Promise((resolve) => {
+                let isResolved = false;
+                const container = document.getElementById('netfree-tester-container');
+                const testerDiv = document.createElement('div');
+                testerDiv.id = 'tester-' + videoId;
+                container.appendChild(testerDiv);
+
+                let player;
+                
+                let timeout = setTimeout(() => {
+                    if (!isResolved) {
+                        isResolved = true;
+                        if (player && typeof player.destroy === 'function') { try { player.destroy(); } catch(e){} }
+                        if (testerDiv.parentNode) testerDiv.remove();
+                        resolve(false); 
+                    }
+                }, 2000);
+
+                player = new YT.Player('tester-' + videoId, {
+                    height: '10', width: '10', videoId: videoId,
+                    playerVars: { 'autoplay': 1, 'controls': 0, 'mute': 1, 'origin': window.location.origin },
+                    events: {
+                        'onReady': (event) => { event.target.playVideo(); },
+                        'onError': (event) => {
+                            if (!isResolved) {
+                                isResolved = true;
+                                clearTimeout(timeout);
+                                if (player && typeof player.destroy === 'function') { try{ player.destroy(); }catch(e){} }
+                                if(testerDiv.parentNode) testerDiv.remove();
+                                resolve(false);
+                            }
+                        },
+                        'onStateChange': (event) => {
+                            if ((event.data === 1 || event.data === 3) && !isResolved) {
+                                isResolved = true;
+                                clearTimeout(timeout);
+                                if (player && typeof player.destroy === 'function') { try{ player.destroy(); }catch(e){} }
+                                if(testerDiv.parentNode) testerDiv.remove();
+                                resolve(true);
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        async function renderResultsWithNetfree(items) {
+            if (!state.netfreeMode) {
+                return renderResults(items);
+            }
+            
+            let videosToTest = items.filter(item => item.id && item.id.kind === 'youtube#video').slice(0, 10);
+            let otherItems = items.filter(item => !(item.id && item.id.kind === 'youtube#video'));
+            
+            if (videosToTest.length === 0) {
+                return renderResults(otherItems);
+            }
+
+            let passedVideos = [];
+            for (let i = 0; i < videosToTest.length; i++) {
+                const video = videosToTest[i];
+                const vidId = video.id.videoId;
+                elements.loadingText.textContent = `בודק סרטונים מול נטפרי... ${i + 1}/${videosToTest.length}`;
+                
+                const passed = await testVideoNetfree(vidId);
+                if (passed) passedVideos.push(video);
+            }
+            
+            elements.loadingText.textContent = 'מחפש ביוטיוב...';
+            
+            if (passedVideos.length === 0 && otherItems.length === 0) {
+                elements.resultsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">לא נמצאו סרטונים פתוחים במקבץ זה (נחסמו ע"י סינון).</div>`;
+            } else {
+                renderResults([...otherItems, ...passedVideos]);
             }
         }
 
@@ -461,44 +562,78 @@
             elements.resultsContainer.innerHTML = '';
             elements.loading.classList.remove('hidden');
             elements.loading.classList.add('flex');
+            elements.loadingText.textContent = 'מחפש ביוטיוב...';
+
+            // Check for direct video links
+            const videoMatch = query.match(/(?:v=|youtu\.be\/|shorts\/)([^&?]+)/);
 
             try {
-                // 1. Search Request
-                const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=${state.maxResults}&q=${encodeURIComponent(query)}&type=video,channel,playlist&key=${state.apiKey}`;
-                const searchRes = await fetch(searchUrl);
-                const searchData = await searchRes.json();
+                let combinedItems = [];
 
-                if (!searchRes.ok) throw new Error(searchData.error?.message || 'שגיאה בחיפוש');
-
-                if (searchData.items.length === 0) {
-                    elements.resultsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">לא נמצאו תוצאות ל"${escapeHtml(query)}"</div>`;
-                    elements.loading.classList.add('hidden');
-                    elements.loading.classList.remove('flex');
-                    return;
-                }
-
-                // 2. Fetch extra details (views, duration) for videos
-                const videoIds = searchData.items.filter(item => item.id.videoId).map(item => item.id.videoId).join(',');
-                let videoDetailsMap = {};
-                
-                if (videoIds) {
-                    const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=${videoIds}&key=${state.apiKey}`;
+                if (videoMatch) {
+                    const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoMatch[1]}&key=${state.apiKey}`;
                     const statsRes = await fetch(statsUrl);
-                    if (statsRes.ok) {
+                    const statsData = await statsRes.json();
+                    
+                    if (!statsRes.ok) throw new Error(statsData.error?.message || 'שגיאה במשיכת הסרטון');
+                    
+                    // Format to match search items
+                    combinedItems = (statsData.items || []).map(i => ({
+                        id: { kind: 'youtube#video', videoId: i.id },
+                        snippet: i.snippet,
+                        statistics: i.statistics,
+                        contentDetails: i.contentDetails
+                    }));
+                } else {
+                    // 1. Search Request
+                    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=${state.maxResults}&q=${encodeURIComponent(query)}&type=video,channel,playlist&key=${state.apiKey}`;
+                    const searchRes = await fetch(searchUrl);
+                    const searchData = await searchRes.json();
+
+                    if (!searchRes.ok) throw new Error(searchData.error?.message || 'שגיאה בחיפוש');
+
+                    if (searchData.items.length === 0) {
+                        elements.resultsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">לא נמצאו תוצאות ל"${escapeHtml(query)}"</div>`;
+                        elements.loading.classList.add('hidden');
+                        elements.loading.classList.remove('flex');
+                        return;
+                    }
+
+                    // 2. Fetch extra details (views, duration) for videos together
+                    const items = searchData.items;
+                    const videoIds = items.filter(i => i.id.kind === 'youtube#video').map(i => i.id.videoId);
+                    const otherItems = items.filter(i => i.id.kind !== 'youtube#video');
+                    
+                    if (videoIds.length > 0) {
+                        const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds.join(',')}&key=${state.apiKey}`;
+                        const statsRes = await fetch(statsUrl);
                         const statsData = await statsRes.json();
-                        statsData.items.forEach(v => {
-                            videoDetailsMap[v.id] = {
-                                views: v.statistics.viewCount,
-                                duration: formatDuration(v.contentDetails.duration)
-                            };
-                        });
+                        
+                        const videoItems = (statsData.items || []).map(i => ({
+                            id: { kind: 'youtube#video', videoId: i.id },
+                            snippet: i.snippet,
+                            statistics: i.statistics,
+                            contentDetails: i.contentDetails
+                        }));
+                        combinedItems = [...otherItems, ...videoItems];
+                    } else {
+                        combinedItems = otherItems;
                     }
                 }
 
-                renderResults(searchData.items, videoDetailsMap);
+                if (combinedItems.length === 0) {
+                    elements.resultsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">לא נמצאו תוצאות ל"${escapeHtml(query)}"</div>`;
+                    return;
+                }
+
+                await renderResultsWithNetfree(combinedItems);
 
             } catch (error) {
-                elements.errorText.textContent = error.message;
+                if (error.message === 'Failed to fetch') {
+                    elements.errorText.textContent = 'שגיאת רשת (Failed to fetch): לא ניתן להתחבר ליוטיוב. הדבר נובע לרוב מחסימת אינטרנט (כמו סינון נטפרי), חוסם פרסומות, או הגבלות כתובת (Restrictions) על מפתח ה-API שלך.';
+                } else {
+                    elements.errorText.textContent = error.message;
+                }
                 elements.errorMsg.classList.remove('hidden');
             } finally {
                 elements.loading.classList.add('hidden');
@@ -521,23 +656,23 @@
             return timeStr;
         }
 
-        function renderResults(items, videoDetailsMap) {
+        function renderResults(items) {
             const html = items.map(item => {
                 const snippet = item.snippet;
                 const title = decodeHtmlEntities(snippet.title);
                 const channel = decodeHtmlEntities(snippet.channelTitle);
-                const thumb = snippet.thumbnails.medium?.url || snippet.thumbnails.default?.url;
+                const thumb = snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url;
                 const publishedAt = formatDate(snippet.publishedAt);
                 
-                if (item.id.videoId) {
+                if (item.id.kind === 'youtube#video') {
                     // Render Video Card
-                    const details = videoDetailsMap[item.id.videoId] || {};
-                    const views = details.views ? formatNumber(details.views) + ' צפיות' : '';
-                    const duration = details.duration || '';
+                    const views = item.statistics?.viewCount ? formatNumber(item.statistics.viewCount) + ' צפיות' : '';
+                    const duration = item.contentDetails?.duration ? formatDuration(item.contentDetails.duration) : '';
+                    const videoId = item.id.videoId;
 
                     return `
                         <div class="bg-white dark:bg-cardDark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden cursor-pointer hover:shadow-md transition-shadow group flex flex-col" 
-                             onclick="openVideo('${item.id.videoId}', \`${escapeHtml(title)}\`, \`${escapeHtml(channel)}\`, '${snippet.channelId}', '${snippet.publishedAt}', \`${escapeHtml(snippet.description)}\`)">
+                             onclick="openVideo('${videoId}', \`${escapeHtml(title)}\`, \`${escapeHtml(channel)}\`, '${snippet.channelId}', '${snippet.publishedAt}', \`${escapeHtml(snippet.description || '')}\`)">
                             <div class="relative aspect-video bg-gray-200 dark:bg-gray-800">
                                 <img src="${thumb}" alt="${escapeHtml(title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
                                 ${duration ? `<div class="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">${duration}</div>` : ''}
@@ -556,7 +691,7 @@
                             </div>
                         </div>
                     `;
-                } else if (item.id.channelId) {
+                } else if (item.id.kind === 'youtube#channel') {
                     // Render Channel Card
                     return `
                         <a href="https://youtube.com/channel/${item.id.channelId}" target="_blank" 
@@ -566,7 +701,7 @@
                             <span class="text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-1 rounded-full mt-2">ערוץ</span>
                         </a>
                     `;
-                } else if (item.id.playlistId) {
+                } else if (item.id.kind === 'youtube#playlist') {
                      // Render Playlist Card
                      return `
                         <a href="https://youtube.com/playlist?list=${item.id.playlistId}" target="_blank"
