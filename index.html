@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- הכרחת הדפדפן לשלוח HTTP Referer בכל בקשה -->
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    
     <title>חיפוש ביוטיוב</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -819,8 +822,10 @@
             // Set Direct YouTube Link
             elements.directYtLink.href = `https://www.youtube.com/watch?v=${videoId}`;
 
-            // Load iframe with standard youtube.com, enablejsapi=1, and origin to avoid 150/153 errors (better for Netfree)
-            elements.iframeContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+            // Load iframe with standard youtube.com, enablejsapi=1, widget_referrer and explicit referrerpolicy
+            const currentUrl = encodeURIComponent(window.location.href);
+            const currentOrigin = encodeURIComponent(window.location.origin);
+            elements.iframeContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&enablejsapi=1&origin=${currentOrigin}&widget_referrer=${currentUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
 
             // Reset state
             state.isFloating = false;
@@ -883,6 +888,12 @@
                         width: 400,
                         height: 225
                     });
+
+                    // הוספת תגית Referer גם לתוך החלון הצף עצמו
+                    const metaRef = document.createElement('meta');
+                    metaRef.name = 'referrer';
+                    metaRef.content = 'strict-origin-when-cross-origin';
+                    state.pipWindow.document.head.appendChild(metaRef);
 
                     // עיצוב החלון הצף החיצוני
                     const style = document.createElement('style');
